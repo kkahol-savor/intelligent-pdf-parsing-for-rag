@@ -1,0 +1,18 @@
+certifi==2025.1.31
+charset-normalizer==3.4.1
+idna==3.10
+iniconfig==2.1.0
+packaging==25.0
+# Editable install with no version control (pdf_to_markdown==0.1.0)
+-e /Users/kanavkahol/work/parse_pdf
+pluggy==1.5.0
+PyMuPDF==1.25.5
+pytest==8.0.2
+python-dotenv==1.1.0
+requests==2.32.3
+urllib3==2.4.0
+numpy<2.0.0
+opencv-python==4.8.1.78
+camelot-py[cv]==0.11.0
+ghostscript==0.7
+pillow==11.2.1
