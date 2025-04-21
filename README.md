@@ -133,6 +133,12 @@ python -m pytest tests/
 4. Push to the branch
 5. Create a Pull Request
 
+## ENV SAMPLE PROMPTS
+
+- IMAGE_DESCRIPTION_PROMPT=Describe this image in detail, be specific about the content and context of the image.
+- TABLE_DETECTION_PROMPT=Identify if the given image of a page contains a table. The page image is 2480 px by 3508 px. Ignore the outer 80 px on all four sides. If it does, return the bounding box of the table. If it does not, return null. Ignore the outer edges of the page. and only consider tables that are within the inner edges of the page. return the pixel coordinates of the table as a json with the following format: {"x1": 100, "y1": 100, "x2": 200, "y2": 200} where x1, y1 are the top left coordinates and x2, y2 are the bottom right coordinates. add margin of 10 pixels around the table. if it goes out of the page, return the coordinates of the table within the page. if no table is detected, return null. Remember: no prose, only valid JSON.
+- TABLE_EXTRACTION_PROMPT=Extract the table content from this image and return it in markdown table format. The format should be:\n| Header1 | Header2 | Header3 |\n|---------|---------|----------|\n| Data1   | Data2   | Data3   |\n\nEnsure to:\n1. Preserve the exact text as shown in the table\n2. Include all headers and data cells\n3. Maintain proper markdown table formatting with | and - characters\n4. Align the columns properly\nReturn ONLY the markdown table, no additional text.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

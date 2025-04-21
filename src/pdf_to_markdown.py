@@ -83,7 +83,7 @@ class PDFProcessor:
 
     def __init__(self) -> None:
         """Initialize the PDFProcessor with configuration from environment variables."""
-        load_dotenv()
+        load_dotenv(override=True)
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_key = os.getenv("AZURE_OPENAI_KEY")
         self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
@@ -743,12 +743,17 @@ class PDFProcessor:
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Use 1-based page numbering for the filename
+        image_path = self.output_dir / f"page_{page_num + 1}.png"
+        
+        # Save the page as an image
         pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
-        image_path = self.output_dir / f"page_{page_num}.png"
         pix.save(str(image_path))
+        
+        print(f"Saved page {page_num + 1} image to: {image_path}")
         return image_path
 
-    def _detect_table(self, image_path: Union[str, Path]) -> Optional[Dict[str, int]]:
+    def _detect_table(self, image_path: Union[str, Path], page_num: Optional[int] = None) -> Optional[Dict[str, int]]:
         """Detect if an image contains a table and return its bounding box.
 
         This method sends an image to OpenAI's vision API to detect if it
@@ -756,6 +761,7 @@ class PDFProcessor:
 
         Args:
             image_path (Union[str, Path]): Path to the image file
+            page_num (Optional[int]): Page number for logging purposes
 
         Returns:
             Optional[Dict[str, int]]: Dictionary containing table coordinates
@@ -764,8 +770,22 @@ class PDFProcessor:
         response = self._call_vision_api(image_path, self.table_detection_prompt)
         try:
             result = json.loads(response)
-            return result if result else None
+            if result and isinstance(result, dict) and 'x1' in result and 'y1' in result and 'x2' in result and 'y2' in result:
+                print(f"\nTable detected! Bounding box coordinates:")
+                print(f"  Top-left: ({result['x1']}, {result['y1']})")
+                print(f"  Bottom-right: ({result['x2']}, {result['y2']})")
+                print(f"  Width: {result['x2'] - result['x1']}px")
+                print(f"  Height: {result['y2'] - result['y1']}px")
+                return result
+            else:
+                print(f"No table detected in the response: {response}")
+                return None
         except json.JSONDecodeError:
+            print(f"Error parsing JSON response: {response}")
+            return None
+        except Exception as e:
+            print(f"Error processing table detection response: {e}")
+            print(f"Raw response: {response}")
             return None
 
     def _extract_table(self, image_path: Union[str, Path], bbox: Dict[str, int]) -> str:
@@ -836,7 +856,9 @@ class PDFProcessor:
 
         try:
             for page_num in range(len(doc)):
-                print(f"Processing page {page_num + 1}/{len(doc)}...")
+                # Use 1-based page numbering for user-facing messages
+                user_page_num = page_num + 1
+                print(f"Processing page {user_page_num}/{len(doc)}...")
                 page = doc[page_num]
                 
                 # Save page as image
@@ -846,9 +868,15 @@ class PDFProcessor:
                 time.sleep(self.api_delay)
                 
                 # Detect tables using vision API
-                table_bbox = self._detect_table(image_path)
+                # Pass the 1-based page number to the _detect_table method
+                table_bbox = self._detect_table(image_path, page_num=user_page_num)
                 if table_bbox:
-                    print(f"Table detected on page {page_num + 1} at coordinates: {table_bbox}")
+                    print(f"\nTable detected on page {user_page_num}!")
+                    print(f"Bounding box coordinates:")
+                    print(f"  Top-left: ({table_bbox['x1']}, {table_bbox['y1']})")
+                    print(f"  Bottom-right: ({table_bbox['x2']}, {table_bbox['y2']})")
+                    print(f"  Width: {table_bbox['x2'] - table_bbox['x1']}px")
+                    print(f"  Height: {table_bbox['y2'] - table_bbox['y1']}px")
                 
                 if table_bbox:
                     try:
@@ -863,7 +891,7 @@ class PDFProcessor:
                             table_files.append(csv_path)
                         markdown_text.append(markdown_table)
                     except Exception as e:
-                        print(f"Error processing table on page {page_num + 1}: {str(e)}")
+                        print(f"Error processing table on page {user_page_num}: {str(e)}")
                         # Fall back to regular text processing
                         text = page.get_text()
                         markdown_text.append(text)
